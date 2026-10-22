@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Ruta Carburante</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Source+Sans+3:wght@400;600&display=swap">
+<style>
+/* Layout: columna única de controles arriba, tarjetas de ruta comparables debajo; cifras en tipografía de cartel de carretera */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --fg:#1d2733; --muted:#5d6b7a; --line:#d9dfe6;
+  --accent:#1f5fa8; --accent-fg:#ffffff; --good:#1d7a46; --good-bg:#e4f3ea; --warn:#9a5b00;
+  --display:"Barlow Semi Condensed","Arial Narrow",Arial,sans-serif;
+  --body:"Source Sans 3",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#12171d; --surface:#1a2129; --fg:#e6ebf0; --muted:#98a6b5; --line:#2c3642;
+  --accent:#5b9bea; --accent-fg:#0d1520; --good:#5fd08e; --good-bg:#16301f; --warn:#e2a54a; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 var(--body)}
+.wrap{max-width:1080px;margin:0 auto;padding-inline:16px;padding-block:20px 48px}
+header{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;margin-bottom:16px}
+h1{font:700 2rem/1.1 var(--display);margin:0;letter-spacing:.01em}
+.sub{color:var(--muted);margin:0}
+.tabs{display:flex;gap:4px;margin-bottom:12px}
+.tabs button{font:600 1rem var(--display);letter-spacing:.04em;text-transform:uppercase;border:1px solid var(--line);background:var(--surface);color:var(--fg);padding:8px 16px;border-radius:6px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-fg);border-color:var(--accent)}
+form{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;display:grid;gap:14px}
+.rutas{display:grid;gap:8px}
+.ruta-in{display:grid;grid-template-columns:28px 1fr 1fr 110px;gap:8px;align-items:center}
+.ruta-in .n{font:700 1.1rem var(--display);color:var(--muted);text-align:center}
+.params{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label{display:grid;gap:4px;font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+input,select{font:16px var(--body);padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);min-width:0;width:100%}
+input:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.acciones{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{font:700 1.05rem var(--display);letter-spacing:.04em;text-transform:uppercase;background:var(--accent);color:var(--accent-fg);border:0;border-radius:6px;padding:10px 22px;cursor:pointer}
+.btn:disabled{opacity:.6;cursor:progress}
+.estado{color:var(--muted);font-size:.9rem}
+.err{color:var(--warn)}
+#res{display:grid;gap:16px;margin-top:20px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;min-width:0}
+.card h2{font:700 1.4rem/1.2 var(--display);margin:0 0 4px;text-wrap:balance}
+.meta{color:var(--muted);font-size:.9rem;margin:0 0 12px}
+.cifras{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:14px}
+.cifra span{display:block;font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+.cifra b{font:700 1.6rem/1.1 var(--display);font-variant-numeric:tabular-nums}
+.cifra.good b{color:var(--good)}
+.mejor{outline:2px solid var(--good)}
+.chip{display:inline-block;background:var(--good-bg);color:var(--good);font:700 .8rem var(--display);letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;margin-left:8px;vertical-align:middle}
+.tabla{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:.92rem;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+td.p{font-weight:700}
+tr.top td{background:var(--good-bg)}
+tr.fuera td{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line)}
+a{color:var(--accent)}
+details{margin-top:10px}
+summary{cursor:pointer;color:var(--accent);font-weight:600}
+footer{margin-top:28px;color:var(--muted);font-size:.8rem;max-width:70ch}
+@media (max-width:640px){.ruta-in{grid-template-columns:22px 1fr;}.ruta-in input:nth-of-type(2),.ruta-in input:nth-of-type(3){grid-column:2}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Ruta Carburante</h1>
+  <p class="sub">Coste real del viaje repostando en las gasolineras baratas de cada ruta. Datos oficiales en directo.</p>
+</header>
+
+<div class="tabs" role="tablist">
+  <button id="tab-ruta" role="tab" aria-selected="true" type="button">Comparar rutas</button>
+  <button id="tab-zona" role="tab" aria-selected="false" type="button">Zona</button>
+</div>
+
+<form id="f" novalidate>
+  <div id="bloque-rutas" class="rutas">
+    <div class="ruta-in"><span class="n">1</span><input id="o1" placeholder="Origen" value="Barakaldo"><input id="d1" placeholder="Destino" value="A Coruña"><input id="t1" type="number" min="0" step="0.01" placeholder="Peajes €"></div>
+    <div class="ruta-in"><span class="n">2</span><input id="o2" placeholder="Origen" value="Barakaldo"><input id="d2" placeholder="Destino" value="Valencia"><input id="t2" type="number" min="0" step="0.01" placeholder="Peajes €"></div>
+    <div class="ruta-in"><span class="n">3</span><input id="o3" placeholder="Origen (opcional)"><input id="d3" placeholder="Destino (opcional)"><input id="t3" type="number" min="0" step="0.01" placeholder="Peajes €"></div>
+  </div>
+  <div id="bloque-zona" class="rutas" hidden>
+    <div class="params"><label>Lugar<input id="zlugar" value="Barakaldo"></label><label>Radio (km)<input id="zradio" type="number" min="1" max="50" value="10"></label></div>
+  </div>
+  <div class="params">
+    <label>Combustible
+      <select id="comb">
+        <option value="Precio Gasoleo A">Gasóleo A</option>
+        <option value="Precio Gasoleo Premium">Gasóleo Premium</option>
+        <option value="Precio Gasolina 95 E5">Gasolina 95</option>
+        <option value="Precio Gasolina 98 E5">Gasolina 98</option>
+        <option value="Precio Gases licuados del petróleo">GLP (autogás)</option>
+        <option value="Precio Adblue">AdBlue</option>
+      </select></label>
+    <label class="soloruta">Consumo (l/100 km)<input id="cons" type="number" min="3" max="40" step="0.5" value="11"></label>
+    <label class="soloruta">Litros por repostaje<input id="dep" type="number" min="10" max="300" value="70"></label>
+    <label class="soloruta">Autonomía al salir (km)<input id="aut" type="number" min="0" max="3000" step="1" placeholder="Sin límite"></label>
+    <label class="soloruta">Desvío máx. (km)<input id="desv" type="number" min="0.5" max="15" step="0.5" value="3"></label>
+    <label class="soloruta">Ida y vuelta<select id="iv"><option value="1">Solo ida</option><option value="2">Ida y vuelta</option></select></label>
+  </div>
+  <div class="acciones"><button class="btn" id="go" type="submit">Calcular</button><span class="estado" id="estado"></span></div>
+</form>
+
+<div id="res"></div>
+
+<footer>
+  Fuente de precios: Ministerio para la Transición Ecológica y el Reto Demográfico (datos de precios de carburantes en estaciones de servicio). Solo estaciones de venta al público.
+  Rutas: OSRM, geocodificación: Nominatim, © colaboradores de OpenStreetMap. El ahorro neto descuenta el combustible gastado en el desvío (ida y vuelta a la gasolinera). Herramienta en pruebas: comprueba el precio en el surtidor.
+</footer>
+</div>
+
+<script>
+const API="https://sedeaplicaciones.minetur.gob.es/ServiciosRESTCarburantes/PreciosCarburantes/EstacionesTerrestres/";
+const $=id=>document.getElementById(id);
+const num=s=>{s=(s||"").trim().replace(",",".");const v=parseFloat(s);return isNaN(v)?null:v};
+const eur=v=>v.toLocaleString("es-ES",{style:"currency",currency:"EUR",maximumFractionDigits:2});
+const pl=v=>v.toFixed(3).replace(".",",");
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+let modo="ruta", cache=null;
+
+function setModo(m){modo=m;$("tab-ruta").setAttribute("aria-selected",m==="ruta");$("tab-zona").setAttribute("aria-selected",m==="zona");
+  $("bloque-rutas").hidden=m!=="ruta";$("bloque-zona").hidden=m!=="zona";document.querySelectorAll(".soloruta").forEach(e=>e.hidden=m!=="ruta");}
+$("tab-ruta").onclick=()=>{setModo("ruta");$("res").innerHTML="";estado("");};
+$("tab-zona").onclick=()=>{setModo("zona");$("res").innerHTML="";estado("");};
+
+async function estaciones(){
+  if(cache&&Date.now()-cache.t<15*60e3)return cache;
+  estado("Descargando precios oficiales (≈11.000 gasolineras)…");
+  const r=await fetch(API,{headers:{Accept:"application/json"}});
+  if(!r.ok)throw new Error("El servicio del Ministerio no responde ("+r.status+"). Prueba en unos minutos.");
+  const d=await r.json();
+  const L=[];for(const e of d.ListaEESSPrecio){if(e["Tipo Venta"]!=="P")continue;const la=num(e.Latitud),lo=num(e["Longitud (WGS84)"]);if(la&&lo)L.push({e,la,lo});}
+  cache={t:Date.now(),fecha:d.Fecha,L};return cache;
+}
+const geoCache={};
+async function geo(q){
+  if(geoCache[q])return geoCache[q];
+  const u="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=es,pt,fr,ad&q="+encodeURIComponent(q);
+  const r=await fetch(u,{headers:{Accept:"application/json"}});const j=await r.json();
+  if(!j.length)throw new Error("No encuentro «"+q+"». Prueba añadiendo la provincia.");
+  return geoCache[q]={lat:+j[0].lat,lon:+j[0].lon,nombre:j[0].display_name.split(",")[0]};
+}
+async function ruta(a,b){
+  const u=`https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`;
+  const r=await fetch(u);const j=await r.json();if(j.code!=="Ok")throw new Error("No se pudo calcular la ruta.");
+  const rt=j.routes[0];return {km:rt.distance/1000,h:rt.duration/3600,coords:rt.geometry.coordinates};
+}
+function sobreRuta(L,coords,campo,maxKm){
+  const R=6371,rad=Math.PI/180,lat0=coords.reduce((a,c)=>a+c[1],0)/coords.length,k=Math.cos(lat0*rad);
+  const P=coords.map(c=>[c[0]*rad*R*k,c[1]*rad*R]);const acc=[0];
+  for(let i=1;i<P.length;i++)acc.push(acc[i-1]+Math.hypot(P[i][0]-P[i-1][0],P[i][1]-P[i-1][1]));
+  let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(const p of P){x0=Math.min(x0,p[0]);x1=Math.max(x1,p[0]);y0=Math.min(y0,p[1]);y1=Math.max(y1,p[1]);}
+  const out=[];
+  for(const s of L){const p=num(s.e[campo]);if(!p)continue;const x=s.lo*rad*R*k,y=s.la*rad*R;
+    if(x<x0-maxKm||x>x1+maxKm||y<y0-maxKm||y>y1+maxKm)continue;
+    let best=1e9,bk=0;
+    for(let i=0;i<P.length-1;i++){const ax=P[i][0],ay=P[i][1],dx=P[i+1][0]-ax,dy=P[i+1][1]-ay,l2=dx*dx+dy*dy||1e-12;
+      let t=((x-ax)*dx+(y-ay)*dy)/l2;t=t<0?0:t>1?1:t;const d=Math.hypot(x-ax-t*dx,y-ay-t*dy);if(d<best){best=d;bk=acc[i]+t*Math.sqrt(l2);}}
+    if(best<=maxKm)out.push({s,p,des:best,km:bk});}
+  return out;
+}
+const mediana=a=>{const b=[...a].sort((x,y)=>x-y);return b[Math.floor((b.length-1)/2)]};
+const mapa=s=>`https://www.google.com/maps/search/?api=1&query=${s.la},${s.lo}`;
+function estado(t,err){$("estado").textContent=t;$("estado").className="estado"+(err?" err":"");}
+
+function filaEst(o,extra){const e=o.s.e;return `<tr class="${o.fuera?"fuera":extra.top?"top":""}"${o.fuera?' title="No llegas con la autonomía indicada"':""}>${extra.km?`<td>${Math.round(o.km)}</td>`:""}<td>${o.des.toFixed(1)}</td><td class="p">${pl(o.p)}</td>${extra.neto!==undefined?`<td>${eur(extra.neto)}</td>`:""}<td>${esc(e["Rótulo"])}</td><td>${esc(e["Dirección"])}</td><td>${esc(e.Municipio)}</td><td>${esc(e.Horario)}</td><td><a href="${mapa(o.s)}" target="_blank" rel="noopener">Mapa</a></td></tr>`;}
+
+async function calcRutas(){
+  const campo=$("comb").value,cons=+$("cons").value,dep=+$("dep").value,maxKm=+$("desv").value,iv=+$("iv").value,aut=+$("aut").value||0;
+  const {L,fecha}=await estaciones();
+  const pares=[1,2,3].map(i=>({o:$("o"+i).value.trim(),d:$("d"+i).value.trim(),peaje:+($("t"+i).value||0)})).filter(p=>p.o&&p.d);
+  if(!pares.length)throw new Error("Escribe al menos un origen y un destino.");
+  const res=[];
+  for(const p of pares){
+    estado(`Calculando ${p.o} → ${p.d}…`);
+    const a=await geo(p.o),b=await geo(p.d),rt=await ruta(a,b);
+    const est=sobreRuta(L,rt.coords,campo,maxKm);
+    const litros=rt.km*iv*cons/100;
+    if(!est.length){res.push({p,a,b,rt,litros,vacio:true});continue;}
+    const med=mediana(est.map(o=>o.p));
+    est.forEach(o=>{o.neto=(med-o.p)*dep-(2*o.des*cons/100)*o.p;o.fuera=aut>0&&(o.km+o.des)>aut;});
+    const alcanzables=est.filter(o=>!o.fuera);
+    if(!alcanzables.length){res.push({p,a,b,rt,litros,sinAlcance:true,aut});continue;}
+    const porNeto=[...alcanzables].sort((x,y)=>y.neto-x.neto);
+    const mejor=porNeto[0];
+    const pEfect=med-Math.max(0,mejor.neto)/dep;
+    res.push({p,a,b,rt,litros,est,med,mejor,porNeto,aut,costeMed:litros*med+p.peaje*iv,costeBarato:litros*pEfect+p.peaje*iv,ahorro:litros*(med-pEfect)});
+  }
+  pinta(res,fecha,campo);
+  estado(`Precios actualizados por el Ministerio: ${fecha}`);
+}
+
+function pinta(res,fecha,campo){
+  const validos=res.filter(r=>!r.vacio&&!r.sinAlcance);
+  const minCoste=validos.length?Math.min(...validos.map(r=>r.costeBarato)):0;
+  $("res").innerHTML=res.map(r=>{
+    const tit=`${esc(r.p.o)} → ${esc(r.p.d)}`;
+    const meta=`${Math.round(r.rt.km)} km · ${Math.floor(r.rt.h)} h ${Math.round((r.rt.h%1)*60)} min${+$("iv").value===2?" · cálculo ida y vuelta":""}`;
+    if(r.vacio)return `<section class="card"><h2>${tit}</h2><p class="meta">${meta}</p><p class="err">No hay gasolineras con ese combustible a menos de ${$("desv").value} km de la ruta. Sube el desvío máximo.</p></section>`;
+    if(r.sinAlcance)return `<section class="card"><h2>${tit}</h2><p class="meta">${meta}</p><p class="err">Con ${r.aut} km de autonomía no llegas a ninguna gasolinera de la ruta con ese combustible. Revisa la autonomía o sube el desvío máximo.</p></section>`;
+    const es=validos.length>1&&r.costeBarato===minCoste;
+    const top=r.porNeto.slice(0,8);
+    const orden=[...r.est].sort((x,y)=>x.km-y.km);
+    const cab=`<tr><th>Km</th><th>Desvío</th><th>€/l</th><th>Ahorro neto</th><th>Rótulo</th><th>Dirección</th><th>Municipio</th><th>Horario</th><th></th></tr>`;
+    const umbral=[...r.est].map(o=>o.p).sort((a,b)=>a-b)[Math.min(9,r.est.length-1)];
+    return `<section class="card ${es?"mejor":""}">
+      <h2>${tit}${es?'<span class="chip">Más barata</span>':""}</h2>
+      <p class="meta">${meta} · ${r.est.length} gasolineras en ruta${r.p.peaje?` · peajes ${eur(r.p.peaje)}`:""}</p>
+      <div class="cifras">
+        <div class="cifra"><span>Combustible necesario</span><b>${Math.round(r.litros)} l</b></div>
+        <div class="cifra"><span>Coste a precio medio</span><b>${eur(r.costeMed)}</b></div>
+        <div class="cifra good"><span>Coste repostando bien</span><b>${eur(r.costeBarato)}</b></div>
+        <div class="cifra good"><span>Ahorro</span><b>${eur(r.ahorro)}</b></div>
+        <div class="cifra"><span>Precio medio / mínimo</span><b>${pl(r.med)} / ${pl(Math.min(...r.est.map(o=>o.p)))}</b></div>
+      </div>
+      <p class="meta">Mejor parada: <b>${esc(r.mejor.s.e["Rótulo"])}</b> en ${esc(r.mejor.s.e.Municipio)}, km ${Math.round(r.mejor.km)}, a ${pl(r.mejor.p)} €/l. Ahorro neto por depósito: <b>${eur(r.mejor.neto)}</b>.${r.aut?` Solo se proponen gasolineras a las que llegas con ${r.aut} km de autonomía; las demás salen tachadas en el listado completo.`:""}</p>
+      <div class="tabla"><table>${cab}${top.map((o,i)=>filaEst(o,{km:1,neto:o.neto,top:i===0})).join("")}</table></div>
+      <details><summary>Ver todas en orden de ruta (${orden.length})</summary><div class="tabla"><table>${cab}${orden.map(o=>filaEst(o,{km:1,neto:o.neto,top:o.p<=umbral})).join("")}</table></div></details>
+    </section>`;}).join("");
+}
+
+async function calcZona(){
+  const campo=$("comb").value,radio=+$("zradio").value;
+  const {L,fecha}=await estaciones();const c=await geo($("zlugar").value.trim());
+  const k=Math.cos(c.lat*Math.PI/180);
+  const est=[];for(const s of L){const p=num(s.e[campo]);if(!p)continue;const d=Math.hypot((s.lo-c.lon)*111.2*k,(s.la-c.lat)*111.2);if(d<=radio)est.push({s,p,des:d,km:d});}
+  if(!est.length){$("res").innerHTML=`<section class="card"><p class="err">No hay gasolineras con ese combustible en ${radio} km.</p></section>`;estado("");return;}
+  est.sort((a,b)=>a.p-b.p);const med=mediana(est.map(o=>o.p));
+  const cab=`<tr><th>Distancia</th><th>€/l</th><th>Rótulo</th><th>Dirección</th><th>Municipio</th><th>Horario</th><th></th></tr>`;
+  $("res").innerHTML=`<section class="card"><h2>${esc($("zlugar").value.trim())} · ${radio} km</h2><p class="meta">${est.length} gasolineras</p>
+  <div class="cifras"><div class="cifra good"><span>Más barata</span><b>${pl(est[0].p)}</b></div><div class="cifra"><span>Mediana</span><b>${pl(med)}</b></div><div class="cifra"><span>Más cara</span><b>${pl(est[est.length-1].p)}</b></div><div class="cifra good"><span>Diferencia</span><b>${((med-est[0].p)*100).toFixed(1).replace(".",",")} cts/l</b></div></div>
+  <div class="tabla"><table>${cab}${est.map((o,i)=>filaEst(o,{top:i<5})).join("")}</table></div></section>`;
+  estado(`Precios actualizados por el Ministerio: ${fecha}`);
+}
+
+$("f").addEventListener("submit",async ev=>{
+  ev.preventDefault();$("go").disabled=true;
+  try{modo==="ruta"?await calcRutas():await calcZona();}
+  catch(e){estado(e.message||"Algo ha fallado. Vuelve a intentarlo.",true);}
+  finally{$("go").disabled=false;}
+});
+</script>
+</body>
+</html>
